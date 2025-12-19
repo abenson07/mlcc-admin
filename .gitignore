@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
@@ -31,6 +29,23 @@ yarn-error.log*
 # vercel
 .vercel
 
+# webflow cloud
+.wrangler
+worker-configuration.d.ts
+.open-next/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Cursor
+.cursor/
+
+app
