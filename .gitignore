@@ -12,6 +12,9 @@
 /.next/
 /out/
 
+# opennext (webflow cloud)
+/.open-next/
+
 # production
 /build
 
