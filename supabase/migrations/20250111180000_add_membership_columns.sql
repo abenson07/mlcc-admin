@@ -14,3 +14,4 @@ CREATE INDEX IF NOT EXISTS idx_memberships_stripe_customer_id ON memberships(str
 CREATE INDEX IF NOT EXISTS idx_memberships_stripe_subscription_id ON memberships(stripe_subscription_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_customer_email ON memberships(customer_email);
 
+

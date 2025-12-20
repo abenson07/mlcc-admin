@@ -3,47 +3,73 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import clsx from 'clsx'
+import { Users, MapPin, Briefcase, Route } from 'lucide-react'
 
 const navigation = [
-  { name: 'Dashboard', href: '/' },
-  { name: 'Neighbors', href: '/neighbors' },
-  { name: 'Members', href: '/members' },
-  { name: 'Routes', href: '/routes' },
-  { name: 'Businesses', href: '/businesses' },
+  { name: 'Members', href: '/members', icon: Users },
+  { name: 'Neighbors', href: '/neighbors', icon: MapPin, badge: 10 },
+  { name: 'Businesses', href: '/businesses', icon: Briefcase },
+  { name: 'Routes', href: '/routes', icon: Route },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const isActive = (href: string) => {
+    // Handle basePath /admin
+    const normalizedPathname = pathname.startsWith('/admin') ? pathname.slice(6) : pathname
+    return normalizedPathname === href || (normalizedPathname === '' && href === '/members') || (normalizedPathname === '/' && href === '/members')
+  }
 
   return (
-    <div className="flex flex-col w-64 bg-gray-900">
-      <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto">
-        <div className="flex items-center flex-shrink-0 px-4">
-          <h1 className="text-white text-xl font-bold">MLCC Dashboard</h1>
-        </div>
-        <div className="mt-5 flex-1 flex flex-col">
-          <nav className="flex-1 px-2 space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
+    <div className="w-[240px] bg-white h-full shrink-0 flex flex-col border-r border-gray-100">
+      <div className="pt-10 px-6 pb-8">
+        <h2 className="text-xl font-bold text-[#101828] tracking-tight">
+          Dashboard
+        </h2>
+      </div>
+      <nav className="flex-1 px-3 space-y-1">
+        {navigation.map((item) => {
+          const active = isActive(item.href)
+          const Icon = item.icon
+
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={clsx(
+                'flex items-center justify-between h-11 px-3 rounded-lg transition-all duration-200',
+                active
+                  ? 'bg-white shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] ring-1 ring-black/5'
+                  : 'text-[#4a5565] hover:bg-gray-50 hover:text-[#101828]'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Icon
+                  size={18}
                   className={clsx(
-                    'group flex items-center px-2 py-2 text-sm font-medium rounded-md',
-                    isActive
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    active ? 'text-[#101828]' : 'text-inherit'
+                  )}
+                />
+                <span
+                  className={clsx(
+                    'text-sm font-semibold',
+                    active ? 'text-[#101828]' : 'text-inherit'
                   )}
                 >
                   {item.name}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-      </div>
+                </span>
+              </div>
+              {item.badge && (
+                <div className="bg-[#fb2c36] h-5 min-w-[20px] rounded-full px-1.5 flex items-center justify-center">
+                  <span className="text-white text-[10px] font-bold">
+                    {item.badge}
+                  </span>
+                </div>
+              )}
+            </Link>
+          )
+        })}
+      </nav>
     </div>
   )
 }
-

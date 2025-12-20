@@ -7,3 +7,4 @@ ADD COLUMN IF NOT EXISTS primary_deliverer_id UUID REFERENCES people(id) ON DELE
 CREATE INDEX IF NOT EXISTS idx_routes_primary_deliverer_email ON routes(primary_deliverer_email);
 CREATE INDEX IF NOT EXISTS idx_routes_primary_deliverer_id ON routes(primary_deliverer_id);
 
+

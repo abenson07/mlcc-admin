@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Sidebar } from "@/src/components/layout/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,37 +13,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
-        <nav className="nav">
-          <div className="nav-container">
-            <Link href="/" className="nav-logo">
-              MLCC Admin
-            </Link>
-            <div className="nav-links">
-              <Link href="/" className="nav-link">
-                Home
-              </Link>
-              <Link href="/neighbors" className="nav-link">
-                Neighbors
-              </Link>
-              <Link href="/members" className="nav-link">
-                Members
-              </Link>
-              <Link href="/routes" className="nav-link">
-                Routes
-              </Link>
-              <Link href="/businesses" className="nav-link">
-                Businesses
-              </Link>
+    <html lang="en" className="h-full">
+      <body className="bg-white h-full overflow-hidden antialiased">
+        <div className="flex h-full w-full">
+          <Sidebar />
+          <main className="flex-1 p-4">
+            <div className="bg-[#f3f4f6] rounded-[20px] h-full overflow-auto">
+              <div className="p-8">
+                {children}
+              </div>
             </div>
-          </div>
-        </nav>
-        <main className="main">
-          {children}
-        </main>
+          </main>
+        </div>
       </body>
     </html>
   );
 }
-

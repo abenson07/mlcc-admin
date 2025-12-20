@@ -50,5 +50,3 @@ next-env.d.ts
 
 # Cursor
 .cursor/
-
-app
