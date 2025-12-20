@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import { Users, MapPin, Briefcase, Route, LogOut } from 'lucide-react'
 import { createClient } from '@/src/lib/supabase'
@@ -17,6 +18,26 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [membersCount, setMembersCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    async function fetchMembersCount() {
+      try {
+        const { count, error } = await supabase
+          .from('memberships')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'Active')
+
+        if (error) throw error
+        setMembersCount(count || 0)
+      } catch (error) {
+        console.error('Error fetching members count:', error)
+        setMembersCount(0)
+      }
+    }
+
+    fetchMembersCount()
+  }, [])
   
   const isActive = (href: string) => {
     // Handle basePath /admin
@@ -71,7 +92,14 @@ export function Sidebar() {
                     {item.name}
                   </span>
                 </div>
-                {item.badge && (
+                {item.name === 'Members' && membersCount !== null && (
+                  <div className="bg-gray-500 h-5 min-w-[20px] rounded-full px-1.5 flex items-center justify-center">
+                    <span className="text-white text-[10px] font-bold">
+                      {membersCount}
+                    </span>
+                  </div>
+                )}
+                {item.badge && item.name !== 'Members' && (
                   <div className="bg-[#fb2c36] h-5 min-w-[20px] rounded-full px-1.5 flex items-center justify-center">
                     <span className="text-white text-[10px] font-bold">
                       {item.badge}
@@ -118,7 +146,14 @@ export function Sidebar() {
                       active ? 'text-[#101828]' : 'text-inherit'
                     )}
                   />
-                  {item.badge && (
+                  {item.name === 'Members' && membersCount !== null && (
+                    <div className="absolute -top-1 -right-1 bg-gray-500 h-4 min-w-[16px] rounded-full px-1 flex items-center justify-center">
+                      <span className="text-white text-[8px] font-bold">
+                        {membersCount}
+                      </span>
+                    </div>
+                  )}
+                  {item.badge && item.name !== 'Members' && (
                     <div className="absolute -top-1 -right-1 bg-[#fb2c36] h-4 min-w-[16px] rounded-full px-1 flex items-center justify-center">
                       <span className="text-white text-[8px] font-bold">
                         {item.badge}
