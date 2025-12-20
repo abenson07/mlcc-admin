@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Plus, Filter, Search, TrendingUp } from 'lucide-react'
+import { createClient } from '@/src/lib/supabase'
 
 const stats = [
   {
@@ -26,44 +28,139 @@ const stats = [
   },
 ]
 
-const recentMembers = [
-  { name: 'Sarah Johnson', email: 'sarah.j@email.com', joinDate: 'Nov 15, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Michael Chen', email: 'm.chen@email.com', joinDate: 'Nov 8, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Emma Williams', email: 'emma.w@email.com', joinDate: 'Oct 28, 2024', status: 'Active', revenue: '$120' },
-  { name: 'James Rodriguez', email: 'j.rodriguez@email.com', joinDate: 'Oct 22, 2024', status: 'Pending', revenue: '$0' },
-  { name: 'Olivia Brown', email: 'olivia.b@email.com', joinDate: 'Oct 15, 2024', status: 'Active', revenue: '$120' },
-]
+interface Member {
+  full_name: string
+  email: string
+  tier: string
+  created_at: string
+}
 
-const allMembers = [
-  ...recentMembers,
-  { name: 'David Martinez', email: 'd.martinez@email.com', joinDate: 'Oct 10, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Sophia Lee', email: 'sophia.lee@email.com', joinDate: 'Oct 5, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Ryan Thompson', email: 'ryan.t@email.com', joinDate: 'Sep 28, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Isabella Garcia', email: 'isabella.g@email.com', joinDate: 'Sep 20, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Alex Kumar', email: 'alex.k@email.com', joinDate: 'Sep 15, 2024', status: 'Expired', revenue: '$0' },
-  { name: 'Jessica White', email: 'jessica.w@email.com', joinDate: 'Sep 8, 2024', status: 'Active', revenue: '$120' },
-  { name: 'Daniel Park', email: 'daniel.p@email.com', joinDate: 'Aug 30, 2024', status: 'Active', revenue: '$120' },
-]
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  })
+}
 
 export default function Members() {
+  const [allMembers, setAllMembers] = useState<Member[]>([])
+  const [recentMembers, setRecentMembers] = useState<Member[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        setLoading(true)
+        setError(null)
+        const supabase = createClient()
+
+        // Fetch all active members
+        const threeMonthsAgo = new Date()
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+
+        // Fetch all active members
+        // Query from people table and join memberships (people.membership_id -> memberships.id)
+        const { data: allMembersData, error: allMembersError } = await supabase
+          .from('people')
+          .select(`
+            full_name,
+            email,
+            memberships!inner(
+              tier,
+              created_at,
+              status
+            )
+          `)
+          .eq('memberships.status', 'Active')
+
+        if (allMembersError) throw allMembersError
+
+        // Transform the data to flatten the structure
+        // Handle both array and object responses from Supabase
+        const transformedAllMembers: Member[] = (allMembersData || [])
+          .map((person: any) => {
+            const membership = Array.isArray(person.memberships) 
+              ? person.memberships[0] 
+              : person.memberships
+            if (!membership) return null
+            return {
+              full_name: person.full_name,
+              email: person.email,
+              tier: membership.tier,
+              created_at: membership.created_at,
+            }
+          })
+          .filter((member: Member | null): member is Member => member !== null)
+
+        setAllMembers(transformedAllMembers)
+
+        // Fetch recent members (last 3 months, limit 5)
+        const { data: recentMembersData, error: recentMembersError } = await supabase
+          .from('people')
+          .select(`
+            full_name,
+            email,
+            memberships!inner(
+              tier,
+              created_at,
+              status
+            )
+          `)
+          .eq('memberships.status', 'Active')
+          .gte('memberships.created_at', threeMonthsAgo.toISOString())
+          .order('created_at', { foreignTable: 'memberships', ascending: false })
+          .limit(5)
+
+        if (recentMembersError) throw recentMembersError
+
+        // Transform the data to flatten the structure
+        const transformedRecentMembers: Member[] = (recentMembersData || [])
+          .map((person: any) => {
+            const membership = Array.isArray(person.memberships) 
+              ? person.memberships[0] 
+              : person.memberships
+            if (!membership) return null
+            return {
+              full_name: person.full_name,
+              email: person.email,
+              tier: membership.tier,
+              created_at: membership.created_at,
+            }
+          })
+          .filter((member: Member | null): member is Member => member !== null)
+
+        setRecentMembers(transformedRecentMembers)
+      } catch (err) {
+        console.error('Error fetching members:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch members')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchMembers()
+  }, [])
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[#101828]">All members</h1>
-        <button className="bg-white border border-[#e5e7eb] h-10 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-semibold text-[#101828]">All members</h1>
+        <button className="bg-white border border-[#e5e7eb] h-10 rounded-lg px-3 sm:px-4 py-2 flex items-center justify-center gap-2 hover:bg-gray-50 transition-all shadow-sm w-full sm:w-auto">
           <Plus size={18} className="text-[#364153]" />
           <span className="text-[#364153] text-sm font-medium">Add members</span>
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {stats.map((stat, index) => (
-          <div key={index} className="bg-white pt-4 pb-4 px-6 rounded-xl border border-[#e5e7eb] shadow-sm flex flex-col gap-1">
+          <div key={index} className="bg-white pt-4 pb-4 px-4 sm:px-6 rounded-xl border border-[#e5e7eb] shadow-sm flex flex-col gap-1">
             <p className="text-sm text-[#4a5565] mb-2">{stat.label}</p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-2xl font-bold text-[#101828]">{stat.value}</h3>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h3 className="text-xl sm:text-2xl font-bold text-[#101828]">{stat.value}</h3>
               <div className="flex items-center gap-0.5 text-[#12b76a] text-sm font-medium">
                 <TrendingUp size={16} />
                 <span>{stat.change}</span>
@@ -79,39 +176,49 @@ export default function Members() {
         <h2 className="text-sm font-medium text-[#4a5565]">Recent members (joined in last 3 months)</h2>
         <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="pt-4 pb-4 h-fit">
-                <tr className="border-b border-[#e5e7eb] bg-gray-50/50 mt-4 mb-4 pt-4 pb-4 h-fit">
-                  <th className="w-12 px-6 pt-4 pb-4 h-fit">
-                    <div className="w-4 h-4 border border-[#d0d5dd] rounded bg-white" />
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Member</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Email</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Join Date</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f3f4f6] h-fit">
-                {recentMembers.map((member, index) => (
-                  <tr key={index} className="hover:bg-gray-50 transition-colors h-fit">
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit">
-                      <div className="w-4 h-4 border border-[#d0d5dd] rounded bg-white" />
-                    </td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm font-medium text-[#101828]">{member.name}</td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565]">{member.email}</td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565]">{member.joinDate}</td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.status === 'Active' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-700'
-                        }`}>
-                        {member.status}
-                      </span>
-                    </td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm font-medium text-[#101828]">{member.revenue}</td>
+            {loading ? (
+              <div className="p-8 text-center text-[#6a7282]">Loading...</div>
+            ) : error ? (
+              <div className="p-8 text-center text-red-600">Error: {error}</div>
+            ) : (
+              <table className="w-full text-left min-w-[640px]">
+                <thead className="pt-4 pb-4 h-fit">
+                  <tr className="border-b border-[#e5e7eb] bg-gray-50/50 mt-4 mb-4 pt-4 pb-4 h-fit">
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Member</th>
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full hidden md:table-cell">Email</th>
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full hidden lg:table-cell">Join Date</th>
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Membership Tier</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6] h-fit">
+                  {recentMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 sm:px-6 py-8 text-center text-[#6a7282]">
+                        No recent members found
+                      </td>
+                    </tr>
+                  ) : (
+                    recentMembers.map((member, index) => (
+                      <tr key={index} className="hover:bg-gray-50 transition-colors h-fit">
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm font-medium text-[#101828]">
+                          <div className="flex flex-col">
+                            <span>{member.full_name}</span>
+                            <span className="text-xs text-[#6a7282] md:hidden">{member.email}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565] hidden md:table-cell">{member.email}</td>
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565] hidden lg:table-cell">{formatDate(member.created_at)}</td>
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-700">
+                            {member.tier || 'N/A'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
@@ -120,18 +227,18 @@ export default function Members() {
       <div className="flex flex-col gap-4">
         <h2 className="text-sm font-medium text-[#4a5565]">All Members</h2>
         <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-[#e5e7eb] flex items-center justify-between gap-4">
-            <div className="flex gap-2">
-              <button className="h-10 px-4 border border-[#e5e7eb] rounded-lg flex items-center gap-2 text-sm font-medium text-[#364153] hover:bg-gray-50 transition-all">
+          <div className="p-3 sm:p-4 border-b border-[#e5e7eb] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex gap-2 flex-wrap">
+              <button className="h-10 px-3 sm:px-4 border border-[#e5e7eb] rounded-lg flex items-center gap-2 text-sm font-medium text-[#364153] hover:bg-gray-50 transition-all flex-1 sm:flex-initial">
                 <Filter size={18} />
-                Filters
+                <span className="hidden sm:inline">Filters</span>
               </button>
-              <button className="h-10 px-4 border border-[#e5e7eb] rounded-lg flex items-center gap-2 text-sm font-medium text-[#364153] hover:bg-gray-50 transition-all">
+              <button className="h-10 px-3 sm:px-4 border border-[#e5e7eb] rounded-lg flex items-center gap-2 text-sm font-medium text-[#364153] hover:bg-gray-50 transition-all flex-1 sm:flex-initial">
                 <Filter size={18} />
-                Filters
+                <span className="hidden sm:inline">Filters</span>
               </button>
             </div>
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6a7282]" size={18} />
               <input
                 type="text"
@@ -141,41 +248,49 @@ export default function Members() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="pt-4 pb-4 h-fit">
-                <tr className="border-b border-[#e5e7eb] bg-gray-50/50 mt-4 mb-4 pt-4 pb-4 h-fit">
-                  <th className="w-12 px-6 pt-4 pb-4 h-fit">
-                    <div className="w-4 h-4 border border-[#d0d5dd] rounded bg-white" />
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Member</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Email</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Join Date</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f3f4f6] h-fit">
-                {allMembers.map((member, index) => (
-                  <tr key={index} className="hover:bg-gray-50 transition-colors h-fit">
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit">
-                      <div className="w-4 h-4 border border-[#d0d5dd] rounded bg-white" />
-                    </td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm font-medium text-[#101828]">{member.name}</td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565]">{member.email}</td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565]">{member.joinDate}</td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.status === 'Active' ? 'bg-green-50 text-green-700' :
-                        member.status === 'Pending' ? 'bg-yellow-50 text-yellow-700' :
-                          'bg-red-50 text-red-700'
-                        }`}>
-                        {member.status}
-                      </span>
-                    </td>
-                    <td className="px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm font-medium text-[#101828]">{member.revenue}</td>
+            {loading ? (
+              <div className="p-8 text-center text-[#6a7282]">Loading...</div>
+            ) : error ? (
+              <div className="p-8 text-center text-red-600">Error: {error}</div>
+            ) : (
+              <table className="w-full text-left min-w-[640px]">
+                <thead className="pt-4 pb-4 h-fit">
+                  <tr className="border-b border-[#e5e7eb] bg-gray-50/50 mt-4 mb-4 pt-4 pb-4 h-fit">
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Member</th>
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full hidden md:table-cell">Email</th>
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full hidden lg:table-cell">Join Date</th>
+                    <th className="px-3 sm:px-6 py-4 text-xs font-semibold text-[#6a7282] uppercase tracking-wider mt-4 mb-4 h-full">Membership Tier</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6] h-fit">
+                  {allMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 sm:px-6 py-8 text-center text-[#6a7282]">
+                        No members found
+                      </td>
+                    </tr>
+                  ) : (
+                    allMembers.map((member, index) => (
+                      <tr key={index} className="hover:bg-gray-50 transition-colors h-fit">
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm font-medium text-[#101828]">
+                          <div className="flex flex-col">
+                            <span>{member.full_name}</span>
+                            <span className="text-xs text-[#6a7282] md:hidden">{member.email}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565] hidden md:table-cell">{member.email}</td>
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit text-sm text-[#4a5565] hidden lg:table-cell">{formatDate(member.created_at)}</td>
+                        <td className="px-3 sm:px-6 pt-4 pb-4 mt-4 mb-4 h-fit">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-700">
+                            {member.tier || 'N/A'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
