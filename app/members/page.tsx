@@ -186,7 +186,7 @@ export default function Members() {
     },
     {
       label: 'Membership Revenue YTD',
-      value: '$149,680',
+      value: 'NaN',
     },
   ]
 
