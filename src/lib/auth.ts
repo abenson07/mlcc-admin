@@ -83,8 +83,10 @@ export async function updateSession(request: NextRequest) {
   // refreshed, which will trigger the setAll method above, which will
   // cause an infinite loop.
 
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  return supabaseResponse
+  return { response: supabaseResponse, user }
 }
 
