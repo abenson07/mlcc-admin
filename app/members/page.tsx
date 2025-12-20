@@ -29,10 +29,7 @@ export default function Members() {
   const [error, setError] = useState<string | null>(null)
   const [totalMemberships, setTotalMemberships] = useState<number>(0)
   const [newMembersYTD, setNewMembersYTD] = useState<number>(0)
-  // #region agent log
   const [searchTerm, setSearchTerm] = useState('')
-  fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:52',message:'Component render - searchTerm state initialized',data:{searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   useEffect(() => {
     async function fetchMembers() {
@@ -150,45 +147,28 @@ export default function Members() {
     fetchMembers()
   }, [])
 
-  // #region agent log
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:148',message:'onChange handler called',data:{newValue,oldValue:searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    setSearchTerm(newValue)
+    setSearchTerm(e.target.value)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:152',message:'KeyDown event',data:{key:e.key,metaKey:e.metaKey,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
-    
     // Handle Cmd+A / Ctrl+A (select all)
     if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:156',message:'Cmd+A detected - selecting all text',data:{inputValue:e.currentTarget.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
-      // Explicitly select all text in the input
       e.currentTarget.select()
-      // Don't prevent default - let browser handle it too
       return
     }
     // Escape clears the search
     if (e.key === 'Escape') {
-      fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:163',message:'Escape key pressed - clearing search',data:{searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
       setSearchTerm('')
       e.currentTarget.blur()
     }
   }
 
-  const filteredAllMembers = allMembers.filter(member => {
-    const matches = member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.tier.toLowerCase().includes(searchTerm.toLowerCase())
-    fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:155',message:'Filtering members',data:{searchTerm,totalMembers:allMembers.length,matches},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    return matches
-  })
-  fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:160',message:'Filtered results computed',data:{searchTerm,filteredCount:filteredAllMembers.length,totalCount:allMembers.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
+  const filteredAllMembers = allMembers.filter(member =>
+    member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.tier.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   // Format number with commas
   const formatNumber = (num: number): string => {

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Plus, Filter, Search } from 'lucide-react'
 
 // Sample data
@@ -10,6 +11,32 @@ const routes = [
 ]
 
 export default function Routes() {
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Handle Cmd+A / Ctrl+A (select all)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+      e.currentTarget.select()
+      return
+    }
+    // Escape clears the search
+    if (e.key === 'Escape') {
+      setSearchTerm('')
+      e.currentTarget.blur()
+    }
+  }
+
+  const filteredRoutes = routes.filter(route =>
+    route.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    route.length.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    route.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    route.id.includes(searchTerm)
+  )
+
   return (
     <div className="flex flex-col gap-8">
       {/* Page Header */}
@@ -37,6 +64,9 @@ export default function Routes() {
               <input
                 type="text"
                 placeholder="Search routes..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyDown={handleKeyDown}
                 className="w-full h-10 pl-10 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
               />
             </div>
@@ -57,7 +87,7 @@ export default function Routes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f3f4f6]">
-                {routes.map((route, index) => (
+                {filteredRoutes.map((route, index) => (
                   <tr key={index} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="w-4 h-4 border border-[#d0d5dd] rounded bg-white" />
