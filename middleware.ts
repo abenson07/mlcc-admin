@@ -9,10 +9,12 @@ export async function middleware(request: NextRequest) {
   
   const { pathname } = request.nextUrl;
   const isLoginPage = pathname === '/login';
+  const isRootPage = pathname === '/';
+  const isPublicAuthPage = isLoginPage || isRootPage;
   const isAuthenticated = !!user;
 
-  // If user is authenticated and trying to access login page, redirect to home
-  if (isAuthenticated && isLoginPage) {
+  // If user is authenticated and trying to access auth pages, redirect to home
+  if (isAuthenticated && isPublicAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     const redirectResponse = NextResponse.redirect(url);
@@ -24,7 +26,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // If user is not authenticated and trying to access protected route, redirect to login
-  if (!isAuthenticated && !isLoginPage) {
+  if (!isAuthenticated && !isPublicAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     const redirectResponse = NextResponse.redirect(url);
