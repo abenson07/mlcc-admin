@@ -1,32 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Filter, Search, TrendingUp } from 'lucide-react'
+import { Plus, Filter, Search } from 'lucide-react'
 import { createClient } from '@/src/lib/supabase'
 
-const stats = [
-  {
-    label: 'Total Members',
-    value: '1,247',
-    change: '12.5%',
-    trend: 'up',
-    sublabel: 'vs. last year',
-  },
-  {
-    label: 'New Members YTD',
-    value: '324',
-    change: '28.3%',
-    trend: 'up',
-    sublabel: 'Year-to-date growth',
-  },
-  {
-    label: 'Revenue YTD',
-    value: '$149,680',
-    change: '15.7%',
-    trend: 'up',
-    sublabel: 'Total membership revenue',
-  },
-]
+// Stats will be populated dynamically
 
 interface Member {
   full_name: string
@@ -49,6 +27,8 @@ export default function Members() {
   const [recentMembers, setRecentMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [totalMemberships, setTotalMemberships] = useState<number>(0)
+  const [newMembersYTD, setNewMembersYTD] = useState<number>(0)
   // #region agent log
   const [searchTerm, setSearchTerm] = useState('')
   fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:52',message:'Component render - searchTerm state initialized',data:{searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
@@ -60,6 +40,28 @@ export default function Members() {
         setLoading(true)
         setError(null)
         const supabase = createClient()
+
+        // Count total active memberships
+        const { count: membershipsCount, error: countError } = await supabase
+          .from('memberships')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'Active')
+
+        if (countError) throw countError
+        setTotalMemberships(membershipsCount || 0)
+
+        // Count new members YTD (since January 1 of this calendar year)
+        const startOfYear = new Date()
+        startOfYear.setMonth(0, 1) // January (0-indexed)
+        startOfYear.setHours(0, 0, 0, 0) // Start of day
+        
+        const { count: newMembersCount, error: newMembersError } = await supabase
+          .from('memberships')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfYear.toISOString())
+
+        if (newMembersError) throw newMembersError
+        setNewMembersYTD(newMembersCount || 0)
 
         // Fetch all active members
         const threeMonthsAgo = new Date()
@@ -156,14 +158,23 @@ export default function Members() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Allow Cmd+A / Ctrl+A to work (select all) - don't prevent default
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:152',message:'KeyDown event',data:{key:e.key,metaKey:e.metaKey,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+    
+    // Handle Cmd+A / Ctrl+A (select all)
     if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-      // Let the browser handle select all - don't prevent default
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:156',message:'Cmd+A detected - selecting all text',data:{inputValue:e.currentTarget.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      // Explicitly select all text in the input
+      e.currentTarget.select()
+      // Don't prevent default - let browser handle it too
       return
     }
     // Escape clears the search
     if (e.key === 'Escape') {
-      fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:160',message:'Escape key pressed - clearing search',data:{searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:163',message:'Escape key pressed - clearing search',data:{searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
       setSearchTerm('')
       e.currentTarget.blur()
     }
@@ -178,6 +189,26 @@ export default function Members() {
   })
   fetch('http://127.0.0.1:7243/ingest/360b22a7-0c2d-4c5c-a82f-2bf8b2f66ab9',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/members/page.tsx:160',message:'Filtered results computed',data:{searchTerm,filteredCount:filteredAllMembers.length,totalCount:allMembers.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
   // #endregion
+
+  // Format number with commas
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString('en-US')
+  }
+
+  const stats = [
+    {
+      label: 'Total Members',
+      value: formatNumber(totalMemberships),
+    },
+    {
+      label: 'New Members YTD',
+      value: formatNumber(newMembersYTD),
+    },
+    {
+      label: 'Membership Revenue YTD',
+      value: '$149,680',
+    },
+  ]
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
@@ -195,14 +226,7 @@ export default function Members() {
         {stats.map((stat, index) => (
           <div key={index} className="bg-white pt-4 pb-4 px-4 sm:px-6 rounded-xl border border-[#e5e7eb] shadow-sm flex flex-col gap-1">
             <p className="text-sm text-[#4a5565] mb-2">{stat.label}</p>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <h3 className="text-xl sm:text-2xl font-bold text-[#101828]">{stat.value}</h3>
-              <div className="flex items-center gap-0.5 text-[#12b76a] text-sm font-medium">
-                <TrendingUp size={16} />
-                <span>{stat.change}</span>
-              </div>
-            </div>
-            <p className="text-xs text-[#6a7282] mt-1">{stat.sublabel}</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-[#101828]">{stat.value}</h3>
           </div>
         ))}
       </div>
