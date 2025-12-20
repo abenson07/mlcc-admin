@@ -1,16 +1,10 @@
 import type { NextConfig } from "next";
 
-// Only use basePath in production (for Webflow Cloud deployment)
-// In development, serve from root for simplicity
-const isProduction = process.env.NODE_ENV === 'production';
-const basePath = isProduction ? '/admin' : '';
-
+// Configure the base path and asset prefix to match the mount path in Webflow Cloud
+// The mount path is /admin, so we set both basePath and assetPrefix to /admin
 const nextConfig: NextConfig = {
-  ...(basePath && {
-    basePath,
-    assetPrefix: basePath,
-  }),
-  
+  basePath: '/admin',
+  assetPrefix: '/admin',
   reactStrictMode: true,
 };
 

@@ -1,5 +1,13 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "next build"
+  "telemetry": {
+    "global": {
+      "allowTelemetry": true,
+      "lastPrompted": 1766188174655,
+      "version": "1.10.0"
+    }
+  },
+  "cloud": {
+    "project_id": "0ef1992a-d97b-4ee3-a67d-d0320750eeb3",
+    "framework": "nextjs"
+  }
 }
-
